@@ -2,10 +2,12 @@ class Block{
   constructor(){
     this.block_hash = 0;
     this.prev_block_hash = 0;
+    this.nonce = 0;
     this.output_address = 0;
     this.height = 0;
     this.time = null;
     this.txs = [];
+    this.coinbase = 500;
   }
 }
 
@@ -17,14 +19,50 @@ class Transaction{
     this.amt = 0;
     this.fee = 0;
     this.sig = 0;
-    this.time = 0;
-    this.nonce = 0;
+    this.seq = 0;
   }
 }
 
-var USER_CHAINS = {};
+var USER_CHAINS = {}; // sheet name -> chain
 
-var TX_POOL = {};
+var TX_POOL = {}; // tx hash -> tx
+
+function verifyChain(chain) {
+  // signature check here
+
+  var values = {};
+  var seqs = {};
+  
+  for(var block in chain) {
+
+    // verifychain
+  
+    // computechain
+    if (!(block.output_address in this.values)) {
+      values[block.output_address] = 0;
+    }
+    values[block.output_address] = this.coinbase;
+
+    for (var tx in block.txs) {
+      // verifytx -> seq, safe addition/subtraction
+
+      if (!(tx.from_adr in this.values)) {
+        values[tx.from_adr] = 0;
+      }
+      if (!(tx.to_adr in this.values)) {
+        values[tx.to_adr] = 0;
+      }
+      values[tx.from_adr] -= tx.amt + tx.fee;
+      values[tx.to_adr] += tx.amt;
+      values[block.output_address] += tx.fee;
+      seqs[tx.from_adr] = tx.seq;
+    }
+  }
+}
+
+function verifyTransaction(tx) {
+  return verify(tx.sig, tx.tx_hash, tx.from_adr);
+}
 
 function parseTransactionPool(sheet){
   var rows = sheet.getDataRange().getValues();
@@ -33,7 +71,9 @@ function parseTransactionPool(sheet){
     for(var i = 0; i < rows[0].length; i += 1){
       tx[rows[0][i]] = row[i]
     }
-    TX_POOL[tx.tx_hash] = tx;
+    if(verifyTransaction(tx)) {
+      TX_POOL[tx.tx_hash] = tx;
+    }
   }
 }
 
@@ -54,8 +94,10 @@ function parseUserSheet(sheet) {
       tx.amt = json_tx['amt'];
       tx.fee = json_tx['fee'];
       tx.sig = json_tx['sig'];
-      tx.time = json_tx['time'];
       tx.nonce = json_tx['nonce'];
+      if(!verifyTransaction(tx)) {
+        return;
+      }
       cur_block.txs.push(tx);
     }
 
@@ -66,7 +108,10 @@ function parseUserSheet(sheet) {
     cur_block.time = row[4];
     blocks.push(cur_block);
   }
-  USER_CHAINS[sheet.getName()] = blocks;
+  if (verifyChain(blocks)) {
+    USER_CHAINS[sheet.getName()] = blocks;
+  }
+  // WorldState.
 }
 
 

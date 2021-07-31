@@ -1,0 +1,26 @@
+{
+  "name": "tx-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "daisyui": "^1.10.0",
+    "headlessui": "^0.0.0",
+    "next": "11.0.1",
+    "noble-secp256k1": "^1.2.9",
+    "react": "17.0.2",
+    "react-dom": "17.0.2",
+    "tailwindcss": "^2.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "17.0.15",
+    "eslint": "7.32.0",
+    "eslint-config-next": "11.0.1",
+    "typescript": "4.3.5"
+  }
+}
