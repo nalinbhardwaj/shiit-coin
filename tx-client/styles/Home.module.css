@@ -46,7 +46,8 @@
 }
 
 .title {
-  margin: 0;
+  margin: 16px;
+  margin-top: 128px;
   line-height: 1.15;
   font-size: 4rem;
 }
