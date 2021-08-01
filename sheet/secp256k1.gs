@@ -857,7 +857,9 @@ utils = {
             return Uint8Array.from(createHash('sha256').update(message).digest());
         }
         else {
-            throw new Error("The environment doesn't have sha256 function");
+            const res = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, message);
+            const res2 = res.map(function(x) {return (x < 0 ? x + 256: x);});
+            return res2;        
         }
     },
     hmacSha256: async (key, ...messages) => {

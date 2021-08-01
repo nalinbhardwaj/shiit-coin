@@ -11,6 +11,23 @@ class Block{
   }
 }
 
+
+function getCharCodes(s){
+    let charCodeArr = [];
+    
+    for(let i = 0; i < s.length; i++){
+        let code = s.charCodeAt(i);
+        charCodeArr.push(code);
+    }
+    
+    return charCodeArr;
+}
+
+function stringToArray(bufferString) {
+  return new Uint8Array(getCharCodes(bufferString));
+}
+
+
 class Transaction{
   constructor(){
     this.tx_hash = 0;
@@ -21,6 +38,18 @@ class Transaction{
     this.sig = 0;
     this.seq = 0;
   }
+
+  async computeTransactionHash(){
+    const tx_str = this.from_adr + "$" + this.to_adr + "$" + this.amt + "$" + this.fee + "$" + this.seq;
+    const hash = await utils.sha256(stringToArray(tx_str));
+    const hexHash = bytesToHex(hash);
+    this.tx_hash = hexHash;
+  }
+
+  verifyTransaction() {
+    return verify(this.sig, this.tx_hash, this.from_adr);
+  }
+  
 }
 
 var USER_CHAINS = {}; // sheet name -> chain
@@ -60,24 +89,25 @@ function verifyChain(chain) {
   }
 }
 
-function verifyTransaction(tx) {
-  return verify(tx.sig, tx.tx_hash, tx.from_adr);
-}
 
-function parseTransactionPool(sheet){
+
+async function parseTransactionPool(sheet){
   var rows = sheet.getDataRange().getValues();
   for(var row of rows.slice(1)){
     var tx = new Transaction();
     for(var i = 0; i < rows[0].length; i += 1){
       tx[rows[0][i]] = row[i]
     }
-    if(verifyTransaction(tx)) {
+    await tx.computeTransactionHash();
+    if(tx.verifyTransaction()) {
+      console.log("gg");
       TX_POOL[tx.tx_hash] = tx;
     }
   }
 }
 
-function parseUserSheet(sheet) {
+
+async function parseUserSheet(sheet) {
   var rows = sheet.getDataRange().getValues();
 
   var blocks = []
@@ -87,15 +117,15 @@ function parseUserSheet(sheet) {
     for(var raw_tx of raw_txs){
       var json_tx = JSON.parse(raw_tx);
       var tx = new Transaction();
-
-      tx.tx_hash = json_tx['tx_hash'];
       tx.from_adr = json_tx['from_adr'];
       tx.to_adr = json_tx['to_adr'];
       tx.amt = json_tx['amt'];
       tx.fee = json_tx['fee'];
       tx.sig = json_tx['sig'];
       tx.nonce = json_tx['nonce'];
-      if(!verifyTransaction(tx)) {
+      tx.tx_hash = computeHash(tx);
+      await tx.computeTransactionHash();
+      if(!tx.verifyTransaction()) {
         return;
       }
       cur_block.txs.push(tx);
@@ -115,16 +145,16 @@ function parseUserSheet(sheet) {
 }
 
 
-function readSheets(spreadsheet){
+async function readSheets(spreadsheet){
   TX_POOL = {};
   USER_CHAINS = {};
   var sheets = spreadsheet.getSheets();
 
-  parseTransactionPool(spreadsheet.getSheetByName('TransactionPool'));
+  await parseTransactionPool(spreadsheet.getSheetByName('TransactionPool'));
 
   for (var sheet of sheets) {
     if (sheet.getName().startsWith('user_')) {
-      parseUserSheet(sheet);
+      // await parseUserSheet(sheet);
     }
   }
 }
@@ -172,10 +202,10 @@ function copyRowsWithSetValues(source, target) {
 } 
 
 
-function main() {
+async function main() {
   var own_name = "user_Alice";
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  readSheets(spreadsheet);
+  await readSheets(spreadsheet);
 
   num_users = Object.keys(USER_CHAINS).length;
 
