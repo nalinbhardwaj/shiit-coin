@@ -9,5 +9,6 @@ module.exports = {
   },
   plugins: [
     require('daisyui'),
+    require('autoprefixer'),
   ],
 }

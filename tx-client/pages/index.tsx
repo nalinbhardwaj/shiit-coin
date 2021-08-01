@@ -13,19 +13,12 @@ function bytesToHex(uint8a: any) {
   return hex;
 }
 
-function hexToBytes(hex) {
-  if (typeof hex !== 'string') {
-      throw new TypeError('hexToBytes: expected string, got ' + typeof hex);
-  }
-  if (hex.length % 2)
-      throw new Error('hexToBytes: received invalid unpadded hex');
-  const array = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < array.length; i++) {
-      const j = i * 2;
-      array[i] = Number.parseInt(hex.slice(j, j + 2), 16);
-  }
-  return array;
+
+function stringToArray(bufferString: any) {
+	let uint8Array = new TextEncoder().encode(bufferString);
+	return uint8Array;
 }
+
 
 export default function Home() {
   const [privateKey, setPrivateKey] = useState<string>();
@@ -62,9 +55,14 @@ export default function Home() {
       "fee": fee, 
       "nonce": nonce,
     }
-    const json_string = JSON.stringify(a);
-    console.log(json_string);
-    const signature = await secp.sign(json_string, privateKey);
+
+    const string_rep = publicKey + '$' + toAddress + '$' + amount + '$' + fee + '$' + nonce;
+    console.log(string_rep);
+    const arr = stringToArray(string_rep);
+    const lol = await secp.utils.sha256(arr);
+    const hexHash = bytesToHex(lol);
+    console.log(hexHash);
+    const signature = await secp.sign(hexHash, privateKey);
     setSig(signature);
   }
 
@@ -79,10 +77,10 @@ export default function Home() {
 
       <main className={styles.main} >
         <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
+          Sheesh Coin Transaction Generator
         </h1>
 
-        <div className="form-control w-full">
+        <div className="form-control w-full mt-8">
           <label className="label">
             <span className="label-text">Private Key</span> 
             <a href="#" onClick={() => setPrivateKey(bytesToHex(secp.utils.randomPrivateKey()))}className="label-text-alt">
@@ -121,12 +119,12 @@ export default function Home() {
           </label> 
           <input value={nonce} onChange={x => setNonce(parseInt(x.target.value, 10))} type="number" placeholder="username" className="input input-accent input-bordered" />
         </div>
-        <button onClick={genSig} className="btn btn-primary">Generate Signature</button>
+        <button onClick={genSig} className="btn btn-primary mt-8">Generate Signature</button>
         <div className="form-control w-full">
           <label className="label">
             <span className="label-text">Signature</span>
           </label> 
-          <input type="text" placeholder="username" className="input input-accent input-bordered" />
+          <input value={sig} type="text" placeholder="username" className="input input-accent input-bordered" />
         </div>
       </main>
 

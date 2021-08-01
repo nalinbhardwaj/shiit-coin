@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "autoprefixer": "^10.3.1",
     "daisyui": "^1.10.0",
     "headlessui": "^0.0.0",
     "next": "11.0.1",
