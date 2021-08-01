@@ -1,12 +1,73 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
-import * as secp from "noble-secp256k1"
+import Head from 'next/head';
+import Image from 'next/image';
+import styles from '../styles/Home.module.css';
+import * as secp from "noble-secp256k1";
+import { useEffect, useState } from 'react';
+
+
+function bytesToHex(uint8a: any) {
+  let hex = '';
+  for (let i = 0; i < uint8a.length; i++) {
+      hex += uint8a[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+function hexToBytes(hex) {
+  if (typeof hex !== 'string') {
+      throw new TypeError('hexToBytes: expected string, got ' + typeof hex);
+  }
+  if (hex.length % 2)
+      throw new Error('hexToBytes: received invalid unpadded hex');
+  const array = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < array.length; i++) {
+      const j = i * 2;
+      array[i] = Number.parseInt(hex.slice(j, j + 2), 16);
+  }
+  return array;
+}
 
 export default function Home() {
-  const privateKey = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
-  const messageHash = "a33321f98e4ff1c283c76998f14f57447545d339b3db534c6d886decb4209f28";
-  const publicKey = secp.getPublicKey(privateKey);
+  const [privateKey, setPrivateKey] = useState<string>();
+  const [publicKey, setPublicKey] = useState<string>();
+  const [toAddress, setToAddress] = useState<string>();
+  const [amount, setAmount] = useState<number>(0);
+  const [fee, setFee] = useState<number>(0);
+  const [nonce, setNonce] = useState<number>(0);
+  const [sig, setSig] = useState<string>();
+
+
+  useEffect(() => {
+    if(privateKey){
+      try{
+        setPublicKey(secp.getPublicKey(privateKey));
+      }
+      catch(err) {
+        console.log(err);
+        setPublicKey(undefined);
+      }
+    }
+  }, [privateKey]);
+
+
+  const genSig = async () => {
+    if(!privateKey || !toAddress){
+      setSig(undefined);
+      return;
+    }
+    const a = {  
+      "from_adr": publicKey, 
+      "to_adr": toAddress,
+      "amt": amount,
+      "fee": fee, 
+      "nonce": nonce,
+    }
+    const json_string = JSON.stringify(a);
+    console.log(json_string);
+    const signature = await secp.sign(json_string, privateKey);
+    setSig(signature);
+  }
+
 
   return (
     <div className={styles.container}>
@@ -16,55 +77,56 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className={styles.main}>
+      <main className={styles.main} >
         <h1 className={styles.title}>
           Welcome to <a href="https://nextjs.org">Next.js!</a>
         </h1>
 
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Private Key</span> 
-            <a href="#" class="label-text-alt">
-                  Generate private key
+        <div className="form-control w-full">
+          <label className="label">
+            <span className="label-text">Private Key</span> 
+            <a href="#" onClick={() => setPrivateKey(bytesToHex(secp.utils.randomPrivateKey()))}className="label-text-alt">
+                  Generate new private key
                 </a>
           </label> 
-          <input type="text" placeholder="privatekey" class="input input-primary input-bordered" />
+          <input value={privateKey} onChange={x => setPrivateKey(x.target.value)} type="text" placeholder="privatekey" className="input input-primary input-bordered" />
         </div> 
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Public Key</span>
+        <div className="form-control w-full">
+          <label className="label">
+            <span className="label-text">Public Key</span>
           </label> 
-          <input type="text" placeholder="username" class="input input-secondary input-bordered" />
+          <input value={publicKey} type="text" placeholder="username" className="input input-secondary input-bordered" />
         </div> 
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Public key to</span>
+        <div className="form-control w-full">
+          <label className="label">
+            <span className="label-text">Public key to</span>
           </label> 
-          <input type="text" placeholder="username" class="input input-accent input-bordered" />
+          <input value={toAddress} onChange={x => setToAddress(x.target.value)} type="text" placeholder="username" className="input input-accent input-bordered" />
         </div>
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Amount</span>
+        <div className="form-control w-full">
+          <label className="label">
+            <span className="label-text">Amount</span>
           </label> 
-          <input type="text" placeholder="username" class="input input-accent input-bordered" />
+          <input value={amount} onChange={x => setAmount(parseInt(x.target.value, 10))} type="number" placeholder="username" className="input input-accent input-bordered" />
         </div>
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Fee</span>
+        <div className="form-control w-full">
+          <label className="label">
+            <span className="label-text">Fee</span>
           </label> 
-          <input type="text" placeholder="username" class="input input-accent input-bordered" />
+          <input value={fee} onChange={x => setFee(parseInt(x.target.value, 10))} type="number" placeholder="username" className="input input-accent input-bordered" />
         </div>
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Nonce</span>
+        <div className="form-control w-full">
+          <label className="label">
+            <span className="label-text">Nonce</span>
           </label> 
-          <input type="text" placeholder="username" class="input input-accent input-bordered" />
+          <input value={nonce} onChange={x => setNonce(parseInt(x.target.value, 10))} type="number" placeholder="username" className="input input-accent input-bordered" />
         </div>
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Signature</span>
+        <button onClick={genSig} className="btn btn-primary">Generate Signature</button>
+        <div className="form-control w-full">
+          <label className="label">
+            <span className="label-text">Signature</span>
           </label> 
-          <input type="text" placeholder="username" class="input input-accent input-bordered" />
+          <input type="text" placeholder="username" className="input input-accent input-bordered" />
         </div>
       </main>
 
