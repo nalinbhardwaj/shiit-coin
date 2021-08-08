@@ -1,32 +1,5 @@
-class Block{
-  constructor(){
-    this.block_hash = 0;
-    this.prev_block_hash = 0;
-    this.nonce = 0;
-    this.output_address = 0;
-    this.height = 0;
-    this.time = null;
-    this.txs = [];
-    this.coinbase = 500;
-  }
-}
 
-
-function getCharCodes(s){
-    let charCodeArr = [];
-    
-    for(let i = 0; i < s.length; i++){
-        let code = s.charCodeAt(i);
-        charCodeArr.push(code);
-    }
-    
-    return charCodeArr;
-}
-
-function stringToArray(bufferString) {
-  return new Uint8Array(getCharCodes(bufferString));
-}
-
+DIFFICULTY = BigInt('0xf0000f9296758f559bed50f2ee6b749806893022dcc2b074650e7971cea5a23b');
 
 class Transaction{
   constructor(){
@@ -47,10 +20,78 @@ class Transaction{
   }
 
   verifyTransaction() {
-    return verify(this.sig, this.tx_hash, this.from_adr);
+    try {
+      var res = verify(this.sig, this.tx_hash, this.from_adr);
+      return res;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
   }
-  
+
+  getJSONrepr() {
+    return JSON.stringify(this, null, 2);
+  } 
 }
+
+class Block{
+  constructor(){
+    this.number_block_hash = 0;
+    this.block_hash = 0;
+    this.prev_block_hash = 0;
+    this.nonce = 0;
+    this.output_address = 0;
+    this.height = 0;
+    this.time = null;
+    this.txs = [];
+    this.coinbase = 500;
+  }
+
+  async computeBlockHash() {
+    const block_list = [this.prev_block_hash, this.nonce, this.output_address, this.height, this.time, this.coinbase];
+    for (var tx of this.txs) {
+      block_list.push(tx.tx_hash);
+    }
+    const block_str = block_list.join('$');
+    const hash = await utils.sha256(stringToArray(block_str));
+    const hexHash = bytesToHex(hash);
+    this.number_block_hash = bytesToNumber(hash);
+    this.block_hash = hexHash;
+  }
+
+  getSheetRepr() {
+    var res = [
+      this.prev_block_hash,
+      this.block_hash,
+      this.output_address,
+      this.height.toString(),
+      this.time.toString(),
+    ]
+    for (var tx of this.txs) {
+      res.push(tx.getJSONrepr());
+    }
+    return res;
+  }
+}
+
+
+function getCharCodes(s){
+    let charCodeArr = [];
+    
+    for(let i = 0; i < s.length; i++){
+        let code = s.charCodeAt(i);
+        charCodeArr.push(code);
+    }
+    
+    return charCodeArr;
+}
+
+function stringToArray(bufferString) {
+  return new Uint8Array(getCharCodes(bufferString));
+}
+
+
+var USER_ADDRESSES = {}; // sheet name -> user address
 
 var USER_CHAINS = {}; // sheet name -> chain
 
@@ -62,23 +103,27 @@ function verifyChain(chain) {
   var values = {};
   var seqs = {};
   
-  for(var block in chain) {
+  for(var block of chain) {
 
     // verifychain
-  
+    // - check block difficulty is fine
+    // - verifytx -> seq, safe addition/subtraction
+    // check 3 tx per block
+    // genesis special case handling
+
     // computechain
-    if (!(block.output_address in this.values)) {
+    if (!(block.output_address in values)) {
       values[block.output_address] = 0;
     }
-    values[block.output_address] = this.coinbase;
+    values[block.output_address] = block.coinbase;
 
-    for (var tx in block.txs) {
+    for (var tx of block.txs) {
       // verifytx -> seq, safe addition/subtraction
 
-      if (!(tx.from_adr in this.values)) {
+      if (!(tx.from_adr in values)) {
         values[tx.from_adr] = 0;
       }
-      if (!(tx.to_adr in this.values)) {
+      if (!(tx.to_adr in values)) {
         values[tx.to_adr] = 0;
       }
       values[tx.from_adr] -= tx.amt + tx.fee;
@@ -102,6 +147,8 @@ async function parseTransactionPool(sheet){
     if(tx.verifyTransaction()) {
       console.log("gg");
       TX_POOL[tx.tx_hash] = tx;
+    } else {
+      console.log("brutal savage rekt");
     }
   }
 }
@@ -111,7 +158,8 @@ async function parseUserSheet(sheet) {
   var rows = sheet.getDataRange().getValues();
 
   var blocks = []
-  for (var row of rows.slice(1)){
+  USER_ADDRESSES[sheet.getName()] = rows[0][1];
+  for (var row of rows.slice(2)){
     var cur_block = new Block();
     raw_txs = row.slice(5);
     for(var raw_tx of raw_txs){
@@ -123,7 +171,6 @@ async function parseUserSheet(sheet) {
       tx.fee = json_tx['fee'];
       tx.sig = json_tx['sig'];
       tx.nonce = json_tx['nonce'];
-      tx.tx_hash = computeHash(tx);
       await tx.computeTransactionHash();
       if(!tx.verifyTransaction()) {
         return;
@@ -154,7 +201,8 @@ async function readSheets(spreadsheet){
 
   for (var sheet of sheets) {
     if (sheet.getName().startsWith('user_')) {
-      // await parseUserSheet(sheet);
+      console.log("start reading", sheet.getName());
+      await parseUserSheet(sheet);
     }
   }
 }
@@ -193,13 +241,31 @@ function copyRowsWithSetValues(source, target) {
   let sourceValues = sourceRange.getValues();
   
   let rowCount = sourceValues.length;
-  let columnCount = sourceValues[0].length;
+  let columnCount = sourceValues[1].length;
   
   let targetSheet = spreadSheet.getSheetByName(target);
-  let targetRange = targetSheet.getRange(1, 1, rowCount, columnCount);
+  let targetRange = targetSheet.getRange(2, 1, rowCount, columnCount);
   
   targetRange.setValues(sourceValues);
 } 
+
+function writeChain(target_name) {
+  let spreadSheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  let target_sheet = spreadSheet.getSheetByName(target_name);
+  let orig_target_range = target_sheet.getDataRange();
+  let target_values = orig_target_range.getValues();
+  let col_number = target_values[1].length;
+  var res = [];
+  for (var block of USER_CHAINS[target_name]) {
+    res.push(block.getSheetRepr());
+  }
+
+  if (res.length > 0) {
+    let target_range = target_sheet.getRange(3, 1, res.length, col_number);
+    target_range.setValues(res);
+  }
+}
 
 
 async function main() {
@@ -222,6 +288,7 @@ async function main() {
 
   var bestChain = null, bestValue = -1;
   var own_chain = USER_CHAINS[own_name];
+  var own_address = USER_ADDRESSES[own_name];
   console.log(USER_CHAINS);
   for(var user_name of users_to_check){
     var v = getSimilarity(own_chain, USER_CHAINS[user_name]);
@@ -232,11 +299,47 @@ async function main() {
     }
   }
 
-  if(bestValue <= 0){
-    // we have the longest chain.
-    return;
+  if(bestValue > 0) {
+    // Someone else has better chain, copy
+    console.log('bestChain', bestChain);
+    copyRowsWithSetValues(bestChain, own_name);
+    USER_CHAINS[own_name] = USER_CHAINS[bestChain].slice();
   }
-  console.log('bestChain', bestChain);
-  
-  copyRowsWithSetValues(bestChain, own_name);
+  if(!(own_name in USER_CHAINS && USER_CHAINS[own_name])) {
+    USER_CHAINS[own_name] = []
+  }
+  own_chain = USER_CHAINS[own_name];
+  console.log("own_chain", own_chain);
+
+  // assemble block from tx pool
+  console.log(TX_POOL);
+  tx_list = Object.values(TX_POOL);
+  tx_list.sort((txA, txB) => {txB.fee - txA.fee});
+  tx_list = tx_list.slice(0, 3);
+
+  var potential_block = new Block();
+  potential_block.prev_block_hash = (own_chain.length > 0 ? own_chain[-1].block_hash : "0000");
+  potential_block.output_address = own_address;
+  potential_block.height = (own_chain.length > 0 ? own_chain[-1].height : 0) + 1;
+  potential_block.txs = tx_list.slice();
+  console.log(potential_block.txs);
+
+  var d = new Date();
+  potential_block.time = d.getTime();
+
+  // mine
+  for (var trial_nonce = 0; trial_nonce < 10000; trial_nonce++) {
+    potential_block.nonce = trial_nonce;
+    await potential_block.computeBlockHash();
+
+    // console.log(potential_block.block_hash);
+    if (potential_block.number_block_hash < DIFFICULTY) {
+      console.log('success');
+      own_chain.push(potential_block);
+      break;
+    }
+  }
+  writeChain(own_name);
+
+  // tbd nonce
 }

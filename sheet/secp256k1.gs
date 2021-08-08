@@ -504,8 +504,6 @@ function sqrtMod(x) {
     return pow2(t2, BigInt(2));
 }
 function invert(number, modulo = CURVE.P) {
-  console.log("number", number);
-  console.log("modulo", modulo);
     if (number === BigInt(0) || modulo <= BigInt(0)) {
         throw new Error(`invert: expected positive integers, got n=${number} mod=${modulo}`);
     }
@@ -522,7 +520,7 @@ function invert(number, modulo = CURVE.P) {
         [u, v] = [m, n];
     }
     const gcd = b;
-    console.log("gcd", gcd.toString());
+    // console.log("gcd", gcd.toString());
     if (gcd !== BigInt(1))
         throw new Error('invert: does not exist');
     return mod(x, modulo);
@@ -600,7 +598,7 @@ async function getQRSrfc6979(msgHash, privateKey) {
         v = await utils.hmacSha256(k, v);
         const T = bytesToNumber(v);
         let qrs;
-        console.log(v, isWithinCurveOrder(T));
+        // console.log(v, isWithinCurveOrder(T));
         if (isWithinCurveOrder(T) && (qrs = calcQRSFromK(T, h1n, privateKey))) {
             return qrs;
         }
@@ -616,7 +614,7 @@ function calcQRSFromK(k, msg, priv) {
     const max = CURVE.n;
     const q = Point.BASE.multiply(k);
     const r = mod(q.x, max);
-    console.log("max", max);
+    // console.log("max", max);
     const s = mod(invert(k, max) * (msg + r * priv), max);
     if (r === BigInt(0) || s === BigInt(0))
         return;
@@ -897,11 +895,11 @@ async function main_2() {
   // You pass either a hex string, or Uint8Array
   const privateKey = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
   const messageHash = "a33321f98e4ff1c283c76998f14f57447545d339b3db534c6d886decb4209f38";
-  console.log(privateKey);
+  // console.log(privateKey);
   const publicKey = getPublicKey(privateKey);
-  console.log("publicKey", publicKey);
+  // console.log("publicKey", publicKey);
   const signature = await sign(messageHash, privateKey);
-  console.log("signature", signature);
+  // console.log("signature", signature);
   const isSigned = verify(signature, messageHash, publicKey);
-  console.log("isSigned", isSigned);
+  // console.log("isSigned", isSigned);
 }
