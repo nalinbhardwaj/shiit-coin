@@ -1,8 +1,7 @@
-
-DIFFICULTY = BigInt('0xf0000f9296758f559bed50f2ee6b749806893022dcc2b074650e7971cea5a23b');
+DIFFICULTY = BigInt('0x00000f9296758f559bed50f2ee6b749806893022dcc2b074650e7971cea5a23b');
 
 class Transaction{
-  constructor(){
+  constructor() {
     this.tx_hash = 0;
     this.from_adr = 0;
     this.to_adr = 0;
@@ -21,6 +20,9 @@ class Transaction{
 
   verifyTransaction() {
     try {
+      if (this.from_adr == this.to_adr) {
+        return false;
+      }
       var res = verify(this.sig, this.tx_hash, this.from_adr);
       return res;
     } catch (error) {
@@ -66,9 +68,13 @@ class Block{
       this.output_address,
       this.height.toString(),
       this.time.toString(),
+      this.nonce.toString(),
     ]
     for (var tx of this.txs) {
       res.push(tx.getJSONrepr());
+    }
+    for (var i = 0;i < 3 - this.txs.length;i++) {
+      res.push(undefined);
     }
     return res;
   }
@@ -95,30 +101,56 @@ var USER_ADDRESSES = {}; // sheet name -> user address
 
 var USER_CHAINS = {}; // sheet name -> chain
 
+var MY_SHEET_NAME = "";
+var MY_SEQ = -1;
+
 var TX_POOL = {}; // tx hash -> tx
 
-function verifyChain(chain) {
+async function verifyChain(chain, mempool) {
   // signature check here
 
   var values = {};
   var seqs = {};
   
   for(var block of chain) {
+    console.log(block.block_hash);
 
     // verifychain
     // - check block difficulty is fine
+    var original_block_hash = block.block_hash;
+    await block.computeBlockHash();
+    if (original_block_hash != block.block_hash) {
+      return false;
+    }
+    if (block.number_block_hash >= DIFFICULTY) {
+      return false;
+    }
     // - verifytx -> seq, safe addition/subtraction
-    // check 3 tx per block
-    // genesis special case handling
+    // check 3 tx per block - done in read
 
     // computechain
     if (!(block.output_address in values)) {
       values[block.output_address] = 0;
     }
-    values[block.output_address] = block.coinbase;
+    if (values[block.output_address] + block.coinbase > Number.MAX_VALUE / 2) {
+      return false;
+    }
+    values[block.output_address] += block.coinbase;
+    console.log("block output address", values[block.output_address]);
 
     for (var tx of block.txs) {
-      // verifytx -> seq, safe addition/subtraction
+      console.log("txxx", tx.tx_hash, tx.seq);
+
+      if (!(tx.from_adr in seqs)) {
+        seqs[tx.from_adr] = -1;
+      }
+
+      console.log("seqs from_adr", seqs[tx.from_adr], tx.seq);
+
+      if(tx.seq != seqs[tx.from_adr] + 1) {
+        return false;
+      }
+      seqs[tx.from_adr] = tx.seq;
 
       if (!(tx.from_adr in values)) {
         values[tx.from_adr] = 0;
@@ -126,12 +158,77 @@ function verifyChain(chain) {
       if (!(tx.to_adr in values)) {
         values[tx.to_adr] = 0;
       }
+      console.log("values from_adr", values[tx.from_adr]);
+      console.log("values to_adr", values[tx.to_adr]);
+      if (values[tx.from_adr] < tx.amt + tx.fee) {
+        return false;
+      }
+      values[tx.from_adr] -= tx.amt + tx.fee;
+      if (values[tx.to_adr] + tx.amt > Number.MAX_VALUE / 2) {
+        return false;
+      }
+      values[tx.to_adr] += tx.amt;
+      if (values[block.output_address] + tx.fee > Number.MAX_VALUE / 2) {
+        return false;
+      }
+      values[block.output_address] += tx.fee;
+    }
+  }
+
+  if (mempool.length > 0) {
+    console.log(mempool);
+    var filtered_mempool = [];
+    for (var tx of mempool) {
+      console.log("txxx", tx, tx.tx_hash, tx.seq);
+
+      if (!(tx.from_adr in seqs)) {
+        seqs[tx.from_adr] = -1;
+      }
+
+      console.log("seqs from_adr", seqs[tx.from_adr], tx.seq);
+
+      if(tx.seq != seqs[tx.from_adr] + 1) {
+        continue;
+      }
+
+      if (!(tx.from_adr in values)) {
+        values[tx.from_adr] = 0;
+      }
+      if (!(tx.to_adr in values)) {
+        values[tx.to_adr] = 0;
+      }
+      console.log("values from_adr", values[tx.from_adr]);
+      console.log("values to_adr", values[tx.to_adr]);
+      if (values[tx.from_adr] < tx.amt + tx.fee) {
+        continue;
+      }
+      if (values[tx.to_adr] + tx.amt > Number.MAX_VALUE / 2) {
+        continue;
+      }
+      if (values[block.output_address] + tx.fee > Number.MAX_VALUE / 2) {
+        continue;
+      }
+      if(tx.to_adr == block.output_address && values[block.output_address] + tx.amt + tx.fee > Number.MAX_VALUE / 2) {
+        continue;
+      }
+      seqs[tx.from_adr] = tx.seq;
       values[tx.from_adr] -= tx.amt + tx.fee;
       values[tx.to_adr] += tx.amt;
       values[block.output_address] += tx.fee;
-      seqs[tx.from_adr] = tx.seq;
+      filtered_mempool.push(tx);
     }
+    console.log(filtered_mempool);
+
+    return filtered_mempool;
   }
+
+  console.log("my_address", USER_ADDRESSES[MY_SHEET_NAME]);
+  MY_SEQ = seqs[USER_ADDRESSES[MY_SHEET_NAME]]
+  if(MY_SEQ === undefined) {
+    MY_SEQ = -1;
+  }
+  MY_SEQ += 1;
+  return true;
 }
 
 
@@ -161,8 +258,15 @@ async function parseUserSheet(sheet) {
   USER_ADDRESSES[sheet.getName()] = rows[0][1];
   for (var row of rows.slice(2)){
     var cur_block = new Block();
-    raw_txs = row.slice(5);
+    raw_txs = row.slice(6);
+    if (raw_txs.length > 3) {
+      return;
+    }
     for(var raw_tx of raw_txs){
+      console.log("raw_tx", raw_tx);
+      if (!raw_tx) {
+        continue;
+      }
       var json_tx = JSON.parse(raw_tx);
       var tx = new Transaction();
       tx.from_adr = json_tx['from_adr'];
@@ -173,19 +277,22 @@ async function parseUserSheet(sheet) {
       tx.nonce = json_tx['nonce'];
       await tx.computeTransactionHash();
       if(!tx.verifyTransaction()) {
+        console.log('block tx failed', tx.tx_hash);
         return;
       }
       cur_block.txs.push(tx);
     }
 
-    cur_block.block_hash = row[0];
-    cur_block.prev_block_hash = row[1];
+    cur_block.block_hash = row[1];
+    cur_block.prev_block_hash = row[0];
     cur_block.output_address = row[2];
     cur_block.height = row[3];
     cur_block.time = row[4];
+    cur_block.nonce = row[5];
     blocks.push(cur_block);
   }
-  if (verifyChain(blocks)) {
+  var is_valid = await verifyChain(blocks, [])
+  if (is_valid) {
     USER_CHAINS[sheet.getName()] = blocks;
   }
   // WorldState.
@@ -267,9 +374,18 @@ function writeChain(target_name) {
   }
 }
 
+function writeSeq(target_name) {
+  let spreadSheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  let target_sheet = spreadSheet.getSheetByName(target_name);
+  let target_range = target_sheet.getRange(1, 4, 1, 1);
+  target_range.setValue(MY_SEQ);
+}
+
 
 async function main() {
   var own_name = "user_Alice";
+  MY_SHEET_NAME = own_name;
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   await readSheets(spreadsheet);
 
@@ -315,12 +431,15 @@ async function main() {
   console.log(TX_POOL);
   tx_list = Object.values(TX_POOL);
   tx_list.sort((txA, txB) => {txB.fee - txA.fee});
+  tx_list = await verifyChain(own_chain, tx_list);
+  console.log("tx_list");
   tx_list = tx_list.slice(0, 3);
 
   var potential_block = new Block();
-  potential_block.prev_block_hash = (own_chain.length > 0 ? own_chain[-1].block_hash : "0000");
+  console.log("own chain len", own_chain.length);
+  potential_block.prev_block_hash = (own_chain.length > 0 ? own_chain[own_chain.length - 1].block_hash : "0000");
   potential_block.output_address = own_address;
-  potential_block.height = (own_chain.length > 0 ? own_chain[-1].height : 0) + 1;
+  potential_block.height = (own_chain.length > 0 ? own_chain[own_chain.length - 1].height : 0) + 1;
   potential_block.txs = tx_list.slice();
   console.log(potential_block.txs);
 
@@ -341,5 +460,7 @@ async function main() {
   }
   writeChain(own_name);
 
-  // tbd nonce
+  // sequence compute
+  await verifyChain(own_chain, []);
+  writeSeq(MY_SHEET_NAME);
 }
