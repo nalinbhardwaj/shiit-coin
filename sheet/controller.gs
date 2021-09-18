@@ -1,4 +1,6 @@
-DIFFICULTY = BigInt('0x00000f9296758f559bed50f2ee6b749806893022dcc2b074650e7971cea5a23b');
+DIFFICULTY = BigInt('0xffffff9296758f559bed50f2ee6b749806893022dcc2b074650e7971cea5a23b');
+SELF_NAME = "user_Bob";
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1ZRND1nNLcsxWRvyFHL0bHSw-IOpDulzAwQkYHfG-J2Y/edit#gid=1551679648";
 
 class Transaction{
   constructor() {
@@ -50,6 +52,7 @@ class Block{
   }
 
   async computeBlockHash() {
+    // console.log("prev block hash", this.prev_block_hash);
     const block_list = [this.prev_block_hash, this.nonce, this.output_address, this.height, this.time, this.coinbase];
     for (var tx of this.txs) {
       block_list.push(tx.tx_hash);
@@ -59,6 +62,8 @@ class Block{
     const hexHash = bytesToHex(hash);
     this.number_block_hash = bytesToNumber(hash);
     this.block_hash = hexHash;
+    console.log("block_hash", this.block_hash);
+    console.log("block_str", block_str);
   }
 
   getSheetRepr() {
@@ -83,6 +88,7 @@ class Block{
 
 function getCharCodes(s){
     let charCodeArr = [];
+    // console.log(s);
     
     for(let i = 0; i < s.length; i++){
         let code = s.charCodeAt(i);
@@ -107,8 +113,6 @@ var MY_SEQ = -1;
 var TX_POOL = {}; // tx hash -> tx
 
 async function verifyChain(chain, mempool) {
-  // signature check here
-
   var values = {};
   var seqs = {};
   
@@ -116,13 +120,14 @@ async function verifyChain(chain, mempool) {
     console.log(block.block_hash);
 
     // verifychain
-    // - check block difficulty is fine
     var original_block_hash = block.block_hash;
     await block.computeBlockHash();
     if (original_block_hash != block.block_hash) {
+      console.log("block_hash not fine", original_block_hash, block.block_hash);
       return false;
     }
     if (block.number_block_hash >= DIFFICULTY) {
+      console.log("block_hash difficulty not fine", block.block_hash);
       return false;
     }
     // - verifytx -> seq, safe addition/subtraction
@@ -161,14 +166,17 @@ async function verifyChain(chain, mempool) {
       console.log("values from_adr", values[tx.from_adr]);
       console.log("values to_adr", values[tx.to_adr]);
       if (values[tx.from_adr] < tx.amt + tx.fee) {
+        console.log("tx values invalid", tx.tx_hash);
         return false;
       }
       values[tx.from_adr] -= tx.amt + tx.fee;
       if (values[tx.to_adr] + tx.amt > Number.MAX_VALUE / 2) {
+        console.log("tx values invalid", tx.tx_hash);
         return false;
       }
       values[tx.to_adr] += tx.amt;
       if (values[block.output_address] + tx.fee > Number.MAX_VALUE / 2) {
+        console.log("tx values invalid", tx.tx_hash);
         return false;
       }
       values[block.output_address] += tx.fee;
@@ -188,6 +196,7 @@ async function verifyChain(chain, mempool) {
       console.log("seqs from_adr", seqs[tx.from_adr], tx.seq);
 
       if(tx.seq != seqs[tx.from_adr] + 1) {
+        console.log("tx seq invalid", tx.tx_hash);
         continue;
       }
 
@@ -200,15 +209,19 @@ async function verifyChain(chain, mempool) {
       console.log("values from_adr", values[tx.from_adr]);
       console.log("values to_adr", values[tx.to_adr]);
       if (values[tx.from_adr] < tx.amt + tx.fee) {
+        console.log("tx values invalid", tx.tx_hash);
         continue;
       }
       if (values[tx.to_adr] + tx.amt > Number.MAX_VALUE / 2) {
+        console.log("tx values invalid", tx.tx_hash);
         continue;
       }
       if (values[block.output_address] + tx.fee > Number.MAX_VALUE / 2) {
+        console.log("tx fee values invalid", tx.tx_hash);
         continue;
       }
       if(tx.to_adr == block.output_address && values[block.output_address] + tx.amt + tx.fee > Number.MAX_VALUE / 2) {
+        console.log("tx fee values invalid", tx.tx_hash);
         continue;
       }
       seqs[tx.from_adr] = tx.seq;
@@ -292,6 +305,7 @@ async function parseUserSheet(sheet) {
     blocks.push(cur_block);
   }
   var is_valid = await verifyChain(blocks, [])
+  console.log(sheet.getName(), is_valid, blocks);
   if (is_valid) {
     USER_CHAINS[sheet.getName()] = blocks;
   }
@@ -340,26 +354,23 @@ function getSimilarity(alice_chain, bob_chain){
   else return 0;
 }
 
-function copyRowsWithSetValues(source, target) {
-  let spreadSheet = SpreadsheetApp.getActiveSpreadsheet();
-  let sourceSheet = spreadSheet.getSheetByName(source);
+function copyRowsWithSetValues(spreadsheet, source, target) {
+  let sourceSheet = spreadsheet.getSheetByName(source);
   
   let sourceRange = sourceSheet.getDataRange();
-  let sourceValues = sourceRange.getValues();
+  let sourceValues = sourceRange.getValues().slice(3);
   
   let rowCount = sourceValues.length;
   let columnCount = sourceValues[1].length;
   
-  let targetSheet = spreadSheet.getSheetByName(target);
-  let targetRange = targetSheet.getRange(2, 1, rowCount, columnCount);
+  let targetSheet = spreadsheet.getSheetByName(target);
+  let targetRange = targetSheet.getRange(3, 1, rowCount, columnCount);
   
   targetRange.setValues(sourceValues);
 } 
 
-function writeChain(target_name) {
-  let spreadSheet = SpreadsheetApp.getActiveSpreadsheet();
-
-  let target_sheet = spreadSheet.getSheetByName(target_name);
+function writeChain(spreadsheet, target_name) {
+  let target_sheet = spreadsheet.getSheetByName(target_name);
   let orig_target_range = target_sheet.getDataRange();
   let target_values = orig_target_range.getValues();
   let col_number = target_values[1].length;
@@ -374,25 +385,23 @@ function writeChain(target_name) {
   }
 }
 
-function writeSeq(target_name) {
-  let spreadSheet = SpreadsheetApp.getActiveSpreadsheet();
-
-  let target_sheet = spreadSheet.getSheetByName(target_name);
+function writeSeq(spreadsheet, target_name) {
+  let target_sheet = spreadsheet.getSheetByName(target_name);
   let target_range = target_sheet.getRange(1, 4, 1, 1);
   target_range.setValue(MY_SEQ);
 }
 
 
 async function main() {
-  var own_name = "user_Alice";
-  MY_SHEET_NAME = own_name;
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  MY_SHEET_NAME = SELF_NAME;
+  var spreadsheet = SpreadsheetApp.openByUrl(SHEET_URL);
   await readSheets(spreadsheet);
+  console.log('read success');
 
   num_users = Object.keys(USER_CHAINS).length;
 
   var users_to_check = Object.keys(USER_CHAINS);
-  const index = users_to_check.indexOf(own_name);
+  const index = users_to_check.indexOf(SELF_NAME);
   if (index > -1) {
     users_to_check.splice(index, 1);
   }
@@ -403,10 +412,15 @@ async function main() {
   console.log('users to check', users_to_check);
 
   var bestChain = null, bestValue = -1;
-  var own_chain = USER_CHAINS[own_name];
-  var own_address = USER_ADDRESSES[own_name];
+  console.log("uc own", USER_CHAINS[SELF_NAME]);
+  if(!(SELF_NAME in USER_CHAINS && USER_CHAINS[SELF_NAME])) {
+    USER_CHAINS[SELF_NAME] = []
+  }
+  var own_chain = USER_CHAINS[SELF_NAME];
+  var own_address = USER_ADDRESSES[SELF_NAME];
   console.log(USER_CHAINS);
   for(var user_name of users_to_check){
+    console.log("own chain", own_chain);
     var v = getSimilarity(own_chain, USER_CHAINS[user_name]);
     console.log(user_name, v);
     if(v > bestValue){
@@ -418,14 +432,11 @@ async function main() {
   if(bestValue > 0) {
     // Someone else has better chain, copy
     console.log('bestChain', bestChain);
-    copyRowsWithSetValues(bestChain, own_name);
-    USER_CHAINS[own_name] = USER_CHAINS[bestChain].slice();
+    copyRowsWithSetValues(spreadsheet, bestChain, SELF_NAME);
+    USER_CHAINS[SELF_NAME] = USER_CHAINS[bestChain].slice();
   }
-  if(!(own_name in USER_CHAINS && USER_CHAINS[own_name])) {
-    USER_CHAINS[own_name] = []
-  }
-  own_chain = USER_CHAINS[own_name];
-  console.log("own_chain", own_chain);
+
+  own_chain = USER_CHAINS[SELF_NAME];
 
   // assemble block from tx pool
   console.log(TX_POOL);
@@ -437,7 +448,7 @@ async function main() {
 
   var potential_block = new Block();
   console.log("own chain len", own_chain.length);
-  potential_block.prev_block_hash = (own_chain.length > 0 ? own_chain[own_chain.length - 1].block_hash : "0000");
+  potential_block.prev_block_hash = (own_chain.length > 0 ? own_chain[own_chain.length - 1].block_hash : 0);
   potential_block.output_address = own_address;
   potential_block.height = (own_chain.length > 0 ? own_chain[own_chain.length - 1].height : 0) + 1;
   potential_block.txs = tx_list.slice();
@@ -458,9 +469,9 @@ async function main() {
       break;
     }
   }
-  writeChain(own_name);
+  writeChain(spreadsheet, SELF_NAME);
 
   // sequence compute
   await verifyChain(own_chain, []);
-  writeSeq(MY_SHEET_NAME);
+  writeSeq(spreadsheet, MY_SHEET_NAME);
 }
