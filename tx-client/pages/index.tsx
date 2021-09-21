@@ -21,9 +21,7 @@ function stringToArray(bufferString: any) {
 
 
 export default function Home() {
-  const defaultPrivKey = typeof window !== "undefined" && localStorage.getItem("privateKey");
-  //@ts-ignore
-  const [privateKey, setPrivateKey] = useState<string | null>(!!defaultPrivKey ? undefined : defaultPrivKey );
+  const [privateKey, setPrivateKey] = useState<string>();
   const [publicKey, setPublicKey] = useState<string>();
   const [toAddress, setToAddress] = useState<string>();
   const [amount, setAmount] = useState<number>(0);
@@ -67,6 +65,13 @@ export default function Home() {
     const signature = await secp.sign(hexHash, privateKey);
     setSig(signature);
   }
+
+  useEffect(() => {
+    const defaultPrivKey = typeof window !== "undefined" ? localStorage.getItem("privateKey") : null;
+    if (defaultPrivKey){
+      setPrivateKey(defaultPrivKey);
+    }
+  }, [typeof window])
 
 
   const generatePrivateKey = () => {
