@@ -21,7 +21,9 @@ function stringToArray(bufferString: any) {
 
 
 export default function Home() {
-  const [privateKey, setPrivateKey] = useState<string>();
+  const defaultPrivKey = typeof window !== "undefined" && localStorage.getItem("privateKey");
+  //@ts-ignore
+  const [privateKey, setPrivateKey] = useState<string | null>(!!defaultPrivKey ? undefined : defaultPrivKey );
   const [publicKey, setPublicKey] = useState<string>();
   const [toAddress, setToAddress] = useState<string>();
   const [amount, setAmount] = useState<number>(0);
@@ -67,6 +69,14 @@ export default function Home() {
   }
 
 
+  const generatePrivateKey = () => {
+    const privKey = bytesToHex(secp.utils.randomPrivateKey());
+    setPrivateKey(privKey);
+    if(typeof window !== "undefined"){
+      localStorage.setItem("privateKey", privKey);
+    }
+  }
+
   return (
     <div className={styles.container}>
       <Head>
@@ -83,11 +93,13 @@ export default function Home() {
         <div className="form-control w-full mt-8">
           <label className="label">
             <span className="label-text">Private Key</span> 
-            <a href="#" onClick={() => setPrivateKey(bytesToHex(secp.utils.randomPrivateKey()))}className="label-text-alt">
+            { (typeof window === "undefined" || !window.localStorage.getItem("privateKey")) && 
+            <a href="#" onClick={generatePrivateKey} className="label-text-alt">
                   Generate new private key
                 </a>
+            }
           </label> 
-          <input value={privateKey} onChange={x => setPrivateKey(x.target.value)} type="text" placeholder="privatekey" className="input input-primary input-bordered" />
+          <input value={privateKey ? privateKey : ""} onChange={x => setPrivateKey(x.target.value)} type="text" placeholder="privatekey" className="input input-primary input-bordered" />
         </div> 
         <div className="form-control w-full">
           <label className="label">
