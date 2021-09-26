@@ -1,6 +1,6 @@
-DIFFICULTY = BigInt('0xffffff9296758f559bed50f2ee6b749806893022dcc2b074650e7971cea5a23b');
+DIFFICULTY = BigInt('0x0000ff4206900000000000000000000000000000000000000000000000000000');
 SELF_NAME = "user_Bob";
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1ZRND1nNLcsxWRvyFHL0bHSw-IOpDulzAwQkYHfG-J2Y/edit#gid=1551679648";
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1iilTYMgNZvOwXSnKA4ebKzSee4eWY7i3LJ9FObhlmKk/edit?usp=sharing";
 
 class Transaction{
   constructor() {
@@ -62,8 +62,6 @@ class Block{
     const hexHash = bytesToHex(hash);
     this.number_block_hash = bytesToNumber(hash);
     this.block_hash = hexHash;
-    console.log("block_hash", this.block_hash);
-    console.log("block_str", block_str);
   }
 
   getSheetRepr() {
@@ -117,17 +115,17 @@ async function verifyChain(chain, mempool) {
   var seqs = {};
   
   for(var block of chain) {
-    console.log(block.block_hash);
+    // console.log(block.block_hash);
 
     // verifychain
     var original_block_hash = block.block_hash;
     await block.computeBlockHash();
     if (original_block_hash != block.block_hash) {
-      console.log("block_hash not fine", original_block_hash, block.block_hash);
+      // console.log("block_hash not fine", original_block_hash, block.block_hash);
       return false;
     }
     if (block.number_block_hash >= DIFFICULTY) {
-      console.log("block_hash difficulty not fine", block.block_hash);
+      // console.log("block_hash difficulty not fine", block.block_hash);
       return false;
     }
     // - verifytx -> seq, safe addition/subtraction
@@ -141,16 +139,14 @@ async function verifyChain(chain, mempool) {
       return false;
     }
     values[block.output_address] += block.coinbase;
-    console.log("block output address", values[block.output_address]);
+    // console.log("block output address", values[block.output_address]);
 
     for (var tx of block.txs) {
-      console.log("txxx", tx.tx_hash, tx.seq);
 
       if (!(tx.from_adr in seqs)) {
         seqs[tx.from_adr] = -1;
       }
 
-      console.log("seqs from_adr", seqs[tx.from_adr], tx.seq);
 
       if(tx.seq != seqs[tx.from_adr] + 1) {
         return false;
@@ -163,20 +159,15 @@ async function verifyChain(chain, mempool) {
       if (!(tx.to_adr in values)) {
         values[tx.to_adr] = 0;
       }
-      console.log("values from_adr", values[tx.from_adr]);
-      console.log("values to_adr", values[tx.to_adr]);
       if (values[tx.from_adr] < tx.amt + tx.fee) {
-        console.log("tx values invalid", tx.tx_hash);
         return false;
       }
       values[tx.from_adr] -= tx.amt + tx.fee;
       if (values[tx.to_adr] + tx.amt > Number.MAX_VALUE / 2) {
-        console.log("tx values invalid", tx.tx_hash);
         return false;
       }
       values[tx.to_adr] += tx.amt;
       if (values[block.output_address] + tx.fee > Number.MAX_VALUE / 2) {
-        console.log("tx values invalid", tx.tx_hash);
         return false;
       }
       values[block.output_address] += tx.fee;
@@ -184,19 +175,15 @@ async function verifyChain(chain, mempool) {
   }
 
   if (mempool.length > 0) {
-    console.log(mempool);
     var filtered_mempool = [];
     for (var tx of mempool) {
-      console.log("txxx", tx, tx.tx_hash, tx.seq);
 
       if (!(tx.from_adr in seqs)) {
         seqs[tx.from_adr] = -1;
       }
 
-      console.log("seqs from_adr", seqs[tx.from_adr], tx.seq);
 
       if(tx.seq != seqs[tx.from_adr] + 1) {
-        console.log("tx seq invalid", tx.tx_hash);
         continue;
       }
 
@@ -206,22 +193,16 @@ async function verifyChain(chain, mempool) {
       if (!(tx.to_adr in values)) {
         values[tx.to_adr] = 0;
       }
-      console.log("values from_adr", values[tx.from_adr]);
-      console.log("values to_adr", values[tx.to_adr]);
       if (values[tx.from_adr] < tx.amt + tx.fee) {
-        console.log("tx values invalid", tx.tx_hash);
         continue;
       }
       if (values[tx.to_adr] + tx.amt > Number.MAX_VALUE / 2) {
-        console.log("tx values invalid", tx.tx_hash);
         continue;
       }
       if (values[block.output_address] + tx.fee > Number.MAX_VALUE / 2) {
-        console.log("tx fee values invalid", tx.tx_hash);
         continue;
       }
       if(tx.to_adr == block.output_address && values[block.output_address] + tx.amt + tx.fee > Number.MAX_VALUE / 2) {
-        console.log("tx fee values invalid", tx.tx_hash);
         continue;
       }
       seqs[tx.from_adr] = tx.seq;
@@ -230,12 +211,10 @@ async function verifyChain(chain, mempool) {
       values[block.output_address] += tx.fee;
       filtered_mempool.push(tx);
     }
-    console.log(filtered_mempool);
 
     return filtered_mempool;
   }
 
-  console.log("my_address", USER_ADDRESSES[MY_SHEET_NAME]);
   MY_SEQ = seqs[USER_ADDRESSES[MY_SHEET_NAME]]
   if(MY_SEQ === undefined) {
     MY_SEQ = -1;
@@ -255,10 +234,7 @@ async function parseTransactionPool(sheet){
     }
     await tx.computeTransactionHash();
     if(tx.verifyTransaction()) {
-      console.log("gg");
       TX_POOL[tx.tx_hash] = tx;
-    } else {
-      console.log("brutal savage rekt");
     }
   }
 }
@@ -276,7 +252,6 @@ async function parseUserSheet(sheet) {
       return;
     }
     for(var raw_tx of raw_txs){
-      console.log("raw_tx", raw_tx);
       if (!raw_tx) {
         continue;
       }
@@ -290,7 +265,6 @@ async function parseUserSheet(sheet) {
       tx.nonce = json_tx['nonce'];
       await tx.computeTransactionHash();
       if(!tx.verifyTransaction()) {
-        console.log('block tx failed', tx.tx_hash);
         return;
       }
       cur_block.txs.push(tx);
@@ -305,7 +279,7 @@ async function parseUserSheet(sheet) {
     blocks.push(cur_block);
   }
   var is_valid = await verifyChain(blocks, [])
-  console.log(sheet.getName(), is_valid, blocks);
+  // console.log(sheet.getName(), is_valid, blocks);
   if (is_valid) {
     USER_CHAINS[sheet.getName()] = blocks;
   }
@@ -318,7 +292,7 @@ async function readSheets(spreadsheet){
   USER_CHAINS = {};
   var sheets = spreadsheet.getSheets();
 
-  await parseTransactionPool(spreadsheet.getSheetByName('TransactionPool'));
+  await parseTransactionPool(spreadsheet.getSheetByName('Transaction Pool'));
 
   for (var sheet of sheets) {
     if (sheet.getName().startsWith('user_')) {
@@ -409,20 +383,16 @@ async function main() {
     users_to_check = getRandomSubarray(users_to_check, 7);
   }
 
-  console.log('users to check', users_to_check);
+  console.log('gossip users', users_to_check);
 
   var bestChain = null, bestValue = -1;
-  console.log("uc own", USER_CHAINS[SELF_NAME]);
   if(!(SELF_NAME in USER_CHAINS && USER_CHAINS[SELF_NAME])) {
     USER_CHAINS[SELF_NAME] = []
   }
   var own_chain = USER_CHAINS[SELF_NAME];
   var own_address = USER_ADDRESSES[SELF_NAME];
-  console.log(USER_CHAINS);
   for(var user_name of users_to_check){
-    console.log("own chain", own_chain);
     var v = getSimilarity(own_chain, USER_CHAINS[user_name]);
-    console.log(user_name, v);
     if(v > bestValue){
       bestValue = v;
       bestChain = user_name;
@@ -431,7 +401,7 @@ async function main() {
 
   if(bestValue > 0) {
     // Someone else has better chain, copy
-    console.log('bestChain', bestChain);
+    console.log('copying best chain', bestChain);
     copyRowsWithSetValues(spreadsheet, bestChain, SELF_NAME);
     USER_CHAINS[SELF_NAME] = USER_CHAINS[bestChain].slice();
   }
@@ -439,20 +409,16 @@ async function main() {
   own_chain = USER_CHAINS[SELF_NAME];
 
   // assemble block from tx pool
-  console.log(TX_POOL);
   tx_list = Object.values(TX_POOL);
   tx_list.sort((txA, txB) => {txB.fee - txA.fee});
   tx_list = await verifyChain(own_chain, tx_list);
-  console.log("tx_list");
   tx_list = tx_list.slice(0, 3);
 
   var potential_block = new Block();
-  console.log("own chain len", own_chain.length);
   potential_block.prev_block_hash = (own_chain.length > 0 ? own_chain[own_chain.length - 1].block_hash : 0);
   potential_block.output_address = own_address;
   potential_block.height = (own_chain.length > 0 ? own_chain[own_chain.length - 1].height : 0) + 1;
   potential_block.txs = tx_list.slice();
-  console.log(potential_block.txs);
 
   var d = new Date();
   potential_block.time = d.getTime();
@@ -464,7 +430,7 @@ async function main() {
 
     // console.log(potential_block.block_hash);
     if (potential_block.number_block_hash < DIFFICULTY) {
-      console.log('success');
+      console.log('mine successful');
       own_chain.push(potential_block);
       break;
     }

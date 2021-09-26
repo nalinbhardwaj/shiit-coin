@@ -1,5 +1,6 @@
 // https://github.com/paulmillr/noble-secp256k1
 // Copyright (c) 2019 Paul Miller (https://paulmillr.com)
+// Modified by Nalin Bhardwaj and Adhyyan Sekhsaria for compatibility with Google Apps Script environment.
 
 const CURVE = {
     a: BigInt(0),
