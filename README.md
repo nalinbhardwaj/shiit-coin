@@ -15,13 +15,13 @@ The origins of this project were humble, we started in our fictional garage (as 
 We used to just put the ledger in our slack chat and committed the current chain state SHA to each other, but this mechanism kinda sucked: messages on slack are editable, you have no version history and there’s no clean way to look at the "chain" and understand why I owe Adhyyan 3 KitKats today when I used to owe him only 1 yesterday. 🤔
 
 <p align="center">
-<img width="850" alt="The original ShiitCoin" src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdustnib%2FARCz_M0l3P.png?alt=media&token=3b231a29-733b-4e2f-91ff-1974d22babd4">
+<img width="850" alt="The original ShiitCoin" src="https://user-images.githubusercontent.com/6984346/134825698-a85785f1-5950-481b-a414-b5cafa86c1ea.png">
 </p>
 
 Too poor to afford ETH gas or BTC fees to put our barter on-chain, we came up with the genius idea to making our own “blockchain” — completely on Google Sheets. 🙈
 
 <p align="center">
-<img width="400" alt="Adhyyans best idea of all time" align="center" src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdustnib%2FUBKBkzS_SD.png?alt=media&token=db1d8c35-fad3-4f6e-9821-e9e52c9d34ef">
+<img width="400" alt="Adhyyans best idea of all time" align="center" src="https://user-images.githubusercontent.com/6984346/134825707-1aae4ae5-55ff-4627-aa3a-1ad85514b111.png">
 </p>
   
 ## 👾 Why is this even possible?
