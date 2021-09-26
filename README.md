@@ -14,13 +14,19 @@ The origins of this project were humble, we started in our fictional garage (as 
 
 We used to just put the ledger in our slack chat and committed the current chain state SHA to each other, but this mechanism kinda sucked: messages on slack are editable, you have no version history and there’s no clean way to look at the "chain" and understand why I owe Adhyyan 3 KitKats today when I used to owe him only 1 yesterday. 🤔
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdustnib%2FARCz_M0l3P.png?alt=media&token=3b231a29-733b-4e2f-91ff-1974d22babd4)
+<p align="center">
+<img width="850" alt="The original ShiitCoin" src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdustnib%2FARCz_M0l3P.png?alt=media&token=3b231a29-733b-4e2f-91ff-1974d22babd4">
+</p>
 
 Too poor to afford ETH gas or BTC fees to put our barter on-chain, we came up with the genius idea to making our own “blockchain” — completely on Google Sheets. 🙈
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdustnib%2FUBKBkzS_SD.png?alt=media&token=db1d8c35-fad3-4f6e-9821-e9e52c9d34ef)
-
+<p align="center">
+<img width="400" alt="Adhyyans best idea of all time" align="center" src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdustnib%2FUBKBkzS_SD.png?alt=media&token=db1d8c35-fad3-4f6e-9821-e9e52c9d34ef">
+</p>
+  
 ## 👾 Why is this even possible?
+
+https://user-images.githubusercontent.com/6984346/134824485-848a1838-7229-4baf-8fe6-c2784a0de078.mov
 
 Our system works by creating one page for every client, and everyone runs their own miner and gossip client in a script. When someone wants to make a transaction, they use their private key to sign the transaction and just put it into the public Transaction Pool sheet. Mining script reads this sheet to figure out how it wants to include these transaction in their blocks.
 
