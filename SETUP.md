@@ -1,6 +1,6 @@
 # Sheet Setup Guide
 
-To setup your own sheet that can mine ShiitCoin for you hands-free, set up as follows:
+To run your own "node" for ShiitCoin, you can set up your sheet and client as follows:
 
 1. Sign in to your Google Account and visit the [mainnet sheet](https://docs.google.com/spreadsheets/d/1iilTYMgNZvOwXSnKA4ebKzSee4eWY7i3LJ9FObhlmKk/edit#gid=304846221), create a new sheet using the + button at the bottom left, and copy one of the existing "User_\*" sheets into your new sheet.
 
@@ -13,7 +13,7 @@ To setup your own sheet that can mine ShiitCoin for you hands-free, set up as fo
   <img width="467" alt="Set Permissions" src="https://user-images.githubusercontent.com/6984346/134820271-594b4e58-ed57-4313-88bc-6abcc43924ba.png">
 </p>
 
-3. Edit cell B1 ("My Address") and paste in your **public** address. This is the address that will recieve rewards from blocks your client mines.
+3. Edit cell B1 ("My Address") and paste in your **public** address. This is the address that will recieve rewards from blocks your client mines. You can generate a new public address (or see your old saved one) on our [frontend client](https://shiit-coin.vercel.app).
 
 4. Visit [Google Drive Homepage](https://drive.google.com/drive/u/0/priority), click "New" on top left, go to the "More" dropdown, and select "Google Apps Script".
 
