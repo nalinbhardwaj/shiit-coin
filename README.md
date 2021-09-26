@@ -1,8 +1,10 @@
 # 💩 ShiitCoin: Putting a blockchain on Google Sheets
 
-![YOUTUBE VIDEO EMBED](TBD)
+<div align="center">
+  <a target="_blank" href="https://www.youtube.com/watch?v=_dZpRryIuQ0"><img width="800" src="https://user-images.githubusercontent.com/6984346/134828618-cd13a36c-a9b7-4184-a23b-d654004847e5.png" alt="ShiitCoin Video Introduction"></a>
+</div>
 
-# [Check out the Google Sheet here](https://docs.google.com/spreadsheets/d/1iilTYMgNZvOwXSnKA4ebKzSee4eWY7i3LJ9FObhlmKk/edit?usp=sharing)
+# [✨ Check out the Google Sheet here ✨](https://docs.google.com/spreadsheets/d/1iilTYMgNZvOwXSnKA4ebKzSee4eWY7i3LJ9FObhlmKk/edit?usp=sharing)
 
 Some ideas are bad, and then sometimes there are ideas so bad they actually go back around to being genius — we think we've come across one of those. Yes! We have an end to end blockchain working entirely off of a google sheet: transaction broadcasting, mining, wallets, gossip — all of it!
 
@@ -86,4 +88,3 @@ There were a lot of other emergent ideas we came up with along the way we were c
 - While there are some obvious points of centralisation (Google and the sheet admin itself) in this cryptocurrency, this seems like a nice project for a blockchain 101 course. What are other whacky ideas for blockchain deployments? What if your smart fridge mines using the extra cooling it generates? What if we tie proof of work to physical activity and calories burnt using your Apple Watch?
 
 Surely, there's at least one good idea in these hypotheticals, hit us up if you have thoughts!
-
