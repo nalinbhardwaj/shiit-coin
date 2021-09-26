@@ -12,7 +12,7 @@
     "autoprefixer": "^10.3.1",
     "daisyui": "^1.10.0",
     "headlessui": "^0.0.0",
-    "next": "11.0.1",
+    "next": "11.1.1",
     "noble-secp256k1": "^1.2.9",
     "react": "17.0.2",
     "react-dom": "17.0.2",
